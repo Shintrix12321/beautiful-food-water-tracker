@@ -249,9 +249,61 @@ body {
     border-bottom-left-radius: 4px;
 }
 
-.chat-input-row { display: flex; gap: 8px; }
+.photo-preview {
+    position: relative;
+    margin-bottom: 10px;
+    display: inline-block;
+}
 
-.chat-input-row input {
+.photo-preview img {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+}
+
+.remove-photo {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: #e86c6c;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.photo-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.photo-btn:active {
+    background: rgba(124, 107, 240, 0.2);
+}
+
+.chat-input-row input[type="text"] {
     flex: 1;
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--card-border);
@@ -414,7 +466,6 @@ body {
     margin-top: 2px;
 }
 
-/* Custom food */
 .custom-food {
     margin-bottom: 16px;
     padding-top: 12px;

@@ -66,12 +66,19 @@
             
             <div class="chat-messages" id="chat-messages">
                 <div class="message ai">
-                    <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь — сегодня и вчера. Можешь спрашивать что угодно о питании.</div>
+                    <div class="bubble">Привет! Я Gemini. Можешь писать и отправлять фото еды — я помогу разобрать калории и что можно съесть.</div>
                 </div>
             </div>
 
+            <div id="photo-preview" class="photo-preview" style="display:none;">
+                <img id="preview-img" src="" alt="Фото">
+                <button id="remove-photo" class="remove-photo">×</button>
+            </div>
+
             <div class="chat-input-row">
-                <input type="text" id="chat-input" placeholder="Спроси, что можно съесть..." autocomplete="off">
+                <label class="photo-btn" for="photo-input" title="Отправить фото">📷</label>
+                <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none;">
+                <input type="text" id="chat-input" placeholder="Напиши или прикрепи фото..." autocomplete="off">
                 <button class="btn btn-primary" id="send-btn">➤</button>
             </div>
             <p class="api-status" id="api-status">API-ключ не задан • нажми ⚙️</p>
@@ -132,7 +139,6 @@
 
             <div class="meal-options" id="meal-options"></div>
 
-            <!-- Своя еда -->
             <div class="custom-food">
                 <h3>➕ Своя еда</h3>
                 <div class="custom-food-row">

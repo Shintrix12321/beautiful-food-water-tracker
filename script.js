@@ -1,7 +1,8 @@
-// Трекер + Gemini + пароль 1202 + история + своя еда
+// Трекер + Gemini + пароль + история + фото
 
 const CORRECT_PIN = "1202";
 let currentPin = "";
+let selectedImage = null; // { data: base64, mimeType }
 
 // ===== LOCK =====
 function initLock() {
@@ -133,13 +134,9 @@ function loadState() {
         if (parsed.date === new Date().toDateString()) {
             state = { ...state, ...parsed };
         } else {
-            if (parsed.foods && parsed.foods.length > 0 || parsed.water > 0) {
+            if (parsed.foods?.length > 0 || parsed.water > 0) {
                 const hist = parsed.history || [];
-                hist.unshift({
-                    date: parsed.date,
-                    foods: parsed.foods || [],
-                    water: parsed.water || 0
-                });
+                hist.unshift({ date: parsed.date, foods: parsed.foods || [], water: parsed.water || 0 });
                 state.history = hist.slice(0, 14);
             } else {
                 state.history = parsed.history || [];
@@ -232,6 +229,7 @@ ${historyText}
 ПРАВИЛА:
 - Отвечай по-русски, дружелюбно и по делу
 - Учитывай сегодня и историю предыдущих дней
+- Если прислали фото еды — оцени калории, состав, можно ли есть
 - Предлагай только разрешённые продукты
 - Не предлагай голодание`;
 }
@@ -249,11 +247,15 @@ function updateApiStatus() {
 
 function renderChat() {
     const container = document.getElementById("chat-messages");
-    container.innerHTML = `<div class="message ai"><div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь — сегодня и вчера. Можешь спрашивать что угодно о питании.</div></div>`;
+    container.innerHTML = `<div class="message ai"><div class="bubble">Привет! Я Gemini. Можешь писать и отправлять фото еды — я помогу разобрать калории и что можно съесть.</div></div>`;
     state.chatHistory.forEach(msg => {
         const div = document.createElement("div");
         div.className = `message ${msg.role}`;
-        div.innerHTML = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
+        let content = escapeHtml(msg.text);
+        if (msg.image) {
+            content = `<img src="data:${msg.image.mimeType};base64,${msg.image.data}" style="max-width:160px;border-radius:10px;margin-bottom:6px;display:block;">` + content;
+        }
+        div.innerHTML = `<div class="bubble">${content}</div>`;
         container.appendChild(div);
     });
     container.scrollTop = container.scrollHeight;
@@ -265,14 +267,30 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function clearSelectedPhoto() {
+    selectedImage = null;
+    document.getElementById("photo-preview").style.display = "none";
+    document.getElementById("preview-img").src = "";
+    document.getElementById("photo-input").value = "";
+}
+
 async function sendToGemini(userText) {
     if (!state.apiKey) {
         alert("Сначала добавь API-ключ Gemini (кнопка ⚙️)");
         return;
     }
-    state.chatHistory.push({ role: "user", text: userText });
+    if (!userText && !selectedImage) return;
+
+    const msg = { role: "user", text: userText || "Что на фото?" };
+    if (selectedImage) {
+        msg.image = { ...selectedImage };
+    }
+    state.chatHistory.push(msg);
     renderChat();
     saveState();
+
+    const imageToSend = selectedImage;
+    clearSelectedPhoto();
 
     const container = document.getElementById("chat-messages");
     const typing = document.createElement("div");
@@ -284,12 +302,29 @@ async function sendToGemini(userText) {
 
     try {
         const systemPrompt = buildSystemPrompt();
+        const parts = [{ text: systemPrompt }];
+
+        // История + текущее сообщение
         const contents = [
             { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "model", parts: [{ text: "Понял контекст, включая историю. Готов помогать." }] }
+            { role: "model", parts: [{ text: "Понял контекст. Готов помогать, в том числе по фото." }] }
         ];
-        state.chatHistory.slice(-12).forEach(msg => {
-            contents.push({ role: msg.role === "user" ? "user" : "model", parts: [{ text: msg.text }] });
+
+        state.chatHistory.slice(-10).forEach(m => {
+            const p = [];
+            if (m.image) {
+                p.push({
+                    inline_data: {
+                        mime_type: m.image.mimeType,
+                        data: m.image.data
+                    }
+                });
+            }
+            p.push({ text: m.text || "" });
+            contents.push({
+                role: m.role === "user" ? "user" : "model",
+                parts: p
+            });
         });
 
         const response = await fetch(
@@ -297,7 +332,10 @@ async function sendToGemini(userText) {
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 800 } })
+                body: JSON.stringify({
+                    contents,
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
+                })
             }
         );
         const data = await response.json();
@@ -453,12 +491,38 @@ function initApp() {
     document.getElementById("send-btn").addEventListener("click", () => {
         const input = document.getElementById("chat-input");
         const text = input.value.trim();
-        if (text) { input.value = ""; sendToGemini(text); }
+        if (text || selectedImage) {
+            input.value = "";
+            sendToGemini(text);
+        }
     });
 
     document.getElementById("chat-input").addEventListener("keydown", e => {
         if (e.key === "Enter") document.getElementById("send-btn").click();
     });
+
+    // Фото
+    document.getElementById("photo-input").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 4 * 1024 * 1024) {
+            alert("Фото слишком большое (макс 4 МБ)");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64 = reader.result.split(",")[1];
+            selectedImage = {
+                data: base64,
+                mimeType: file.type || "image/jpeg"
+            };
+            document.getElementById("preview-img").src = reader.result;
+            document.getElementById("photo-preview").style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById("remove-photo").addEventListener("click", clearSelectedPhoto);
 
     document.getElementById("clear-chat").addEventListener("click", () => {
         if (confirm("Очистить историю чата?")) {

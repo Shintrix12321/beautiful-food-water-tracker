@@ -1,28 +1,23 @@
-// Трекер + Gemini + блокировка паролем 1202
+// Трекер + Gemini + пароль 1202 + история + своя еда
 
 const CORRECT_PIN = "1202";
 let currentPin = "";
 
-// ===== LOCK SCREEN =====
+// ===== LOCK =====
 function initLock() {
-    const unlocked = sessionStorage.getItem("trackerUnlocked");
-    if (unlocked === "true") {
+    if (sessionStorage.getItem("trackerUnlocked") === "true") {
         unlockSite();
         return;
     }
-
     document.querySelectorAll(".pin-btn[data-num]").forEach(btn => {
         btn.addEventListener("click", () => {
             if (currentPin.length < 4) {
                 currentPin += btn.dataset.num;
                 updateDots();
-                if (currentPin.length === 4) {
-                    setTimeout(checkPin, 200);
-                }
+                if (currentPin.length === 4) setTimeout(checkPin, 200);
             }
         });
     });
-
     document.getElementById("pin-delete").addEventListener("click", () => {
         currentPin = currentPin.slice(0, -1);
         updateDots();
@@ -31,12 +26,9 @@ function initLock() {
 }
 
 function updateDots() {
-    const dots = document.querySelectorAll(".dot");
-    dots.forEach((dot, i) => {
+    document.querySelectorAll(".dot").forEach((dot, i) => {
         dot.classList.remove("filled", "error");
-        if (i < currentPin.length) {
-            dot.classList.add("filled");
-        }
+        if (i < currentPin.length) dot.classList.add("filled");
     });
 }
 
@@ -45,7 +37,6 @@ function checkPin() {
         sessionStorage.setItem("trackerUnlocked", "true");
         unlockSite();
     } else {
-        // Ошибка
         document.querySelectorAll(".dot").forEach(d => d.classList.add("error"));
         document.getElementById("lock-error").textContent = "Неверный пароль";
         setTimeout(() => {
@@ -57,14 +48,12 @@ function checkPin() {
 }
 
 function unlockSite() {
-    const lock = document.getElementById("lock-screen");
-    lock.classList.add("hidden");
+    document.getElementById("lock-screen").classList.add("hidden");
     document.getElementById("main-content").style.display = "block";
-    // Запускаем основной функционал
     initApp();
 }
 
-// ===== MAIN APP =====
+// ===== DATA =====
 const WATER_GOAL_GLASSES = 10;
 const ML_PER_GLASS = 250;
 
@@ -126,11 +115,80 @@ function isWeekend() {
     return day === 0 || day === 6;
 }
 
+// ===== STATE =====
+let state = {
+    water: 0,
+    foods: [],
+    weights: [],
+    date: new Date().toDateString(),
+    chatHistory: [],
+    history: [], // предыдущие дни [{date, foods, water}]
+    apiKey: localStorage.getItem("geminiApiKey") || ""
+};
+
+function loadState() {
+    const saved = localStorage.getItem("geminiFoodTracker");
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.date === new Date().toDateString()) {
+            state = { ...state, ...parsed };
+        } else {
+            // Новый день — сохраняем вчера в историю
+            if (parsed.foods && parsed.foods.length > 0 || parsed.water > 0) {
+                const hist = parsed.history || [];
+                hist.unshift({
+                    date: parsed.date,
+                    foods: parsed.foods || [],
+                    water: parsed.water || 0
+                });
+                // Храним максимум 14 дней
+                state.history = hist.slice(0, 14);
+            } else {
+                state.history = parsed.history || [];
+            }
+            state.date = new Date().toDateString();
+            state.water = 0;
+            state.foods = [];
+            state.weights = parsed.weights || [];
+            state.chatHistory = parsed.chatHistory || [];
+            saveState();
+        }
+    }
+    state.apiKey = localStorage.getItem("geminiApiKey") || "";
+    render();
+    renderChat();
+    renderHistory();
+    updateApiStatus();
+}
+
+function saveState() {
+    localStorage.setItem("geminiFoodTracker", JSON.stringify({
+        water: state.water,
+        foods: state.foods,
+        weights: state.weights,
+        date: state.date,
+        chatHistory: state.chatHistory,
+        history: state.history
+    }));
+}
+
 function buildSystemPrompt() {
-    const foodsToday = state.foods.map(f => `• ${f.time} [${f.mealType}] ${f.name} (~${f.kcal} ккал)`).join("\n") || "Пока ничего не отмечено";
+    const foodsToday = state.foods.map(f => `• ${f.time} [${f.mealType || "своё"}] ${f.name} (~${f.kcal} ккал)`).join("\n") || "Пока ничего не отмечено";
     const lastWeight = state.weights.length ? state.weights[state.weights.length - 1] : null;
     const dayName = getDayName();
     const isWeekEnd = isWeekend();
+
+    let historyText = "";
+    if (state.history.length > 0) {
+        historyText = "\nИСТОРИЯ ПРЕДЫДУЩИХ ДНЕЙ:\n";
+        state.history.slice(0, 5).forEach(day => {
+            const totalKcal = day.foods.reduce((s, f) => s + (f.kcal || 0), 0);
+            historyText += `\n${day.date} (вода: ${day.water} стаканов, ~${totalKcal} ккал):\n`;
+            day.foods.forEach(f => {
+                historyText += `  • ${f.time || ""} ${f.name} (~${f.kcal} ккал)\n`;
+            });
+        });
+    }
 
     return `Ты — Google Gemini, умный помощник по питанию внутри персонального трекера.
 
@@ -145,80 +203,39 @@ function buildSystemPrompt() {
 
 ЖЁСТКИЕ ИСКЛЮЧЕНИЯ (никогда не предлагай):
 - Рыба — полностью запрещена
-- Цитрусовые (лимон, апельсин и т.д.) — запрещены
+- Цитрусовые — запрещены
 - Сложная зелень и листовые салаты — запрещены
 - Разрешены только простые овощи: огурцы, помидоры, капуста, кабачки, замороженные овощные смеси
 - Белый хлеб заменить на ржаной/цельнозерновой
 - Сахар в напитках исключить
 - Сладкое только после обеда как десерт (до 150-200 ккал)
 
-СЕГОДНЯ: ${dayName} (${isWeekEnd ? "ВЫХОДНОЙ — учёбы нет" : "будний день, есть учёба"})
+СЕГОДНЯ: ${dayName} (${isWeekEnd ? "ВЫХОДНОЙ" : "будний день"})
 
 РАСПИСАНИЕ СЕГОДНЯ:
 ${isWeekEnd ? 
-`- 09:00–10:30 — завтрак (можно позже)
+`- 09:00–10:30 — завтрак
 - 13:00–14:30 — обед
-- 16:30–17:30 — перекус по желанию
+- 16:30–17:30 — перекус
 - 19:30–20:30 — ужин` :
-`- 07:45–08:00 — обязательный плотный завтрак
-- 08:30–14:45 — учёба, еда запрещена, только вода и Nemoloko
-- 15:15–15:45 — сытный обед
-- 18:00–18:30 — лёгкий перекус
-- 20:15–20:45 — белковый ужин`}
+`- 07:45–08:00 — завтрак
+- 08:30–14:45 — учёба (только вода/Nemoloko)
+- 15:15–15:45 — обед
+- 18:00–18:30 — перекус
+- 20:15–20:45 — ужин`}
 
-ТЕКУЩЕЕ СОСТОЯНИЕ НА САЙТЕ СЕГОДНЯ:
+СЕГОДНЯ НА САЙТЕ:
 - Вода: ${state.water} стаканов (${state.water * 250} мл из 2500)
-- Съедено сегодня:
+- Съедено:
 ${foodsToday}
-- Оценка калорий сегодня: ~${state.foods.reduce((s, f) => s + (f.kcal || 0), 0)} ккал
+- Калории сегодня: ~${state.foods.reduce((s, f) => s + (f.kcal || 0), 0)} ккал
+${historyText}
 
-ПРАВИЛА ОТВЕТА:
+ПРАВИЛА:
 - Отвечай по-русски, дружелюбно и по делу
-- Всегда учитывай то, что уже отмечено на сайте и какой сегодня день
-- Предлагай только разрешённые продукты из базы
-- Если пользователь спрашивает «что можно съесть» — смотри на время суток, день недели и уже съеденное
-- Напоминай о воде и завтраке, если они пропущены
-- Не предлагай голодание или очень низкую калорийность`;
-}
-
-let state = {
-    water: 0,
-    foods: [],
-    weights: [],
-    date: new Date().toDateString(),
-    chatHistory: [],
-    apiKey: localStorage.getItem("geminiApiKey") || ""
-};
-
-function loadState() {
-    const saved = localStorage.getItem("geminiFoodTracker");
-    if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.date === new Date().toDateString()) {
-            state = { ...state, ...parsed };
-        } else {
-            state.date = new Date().toDateString();
-            state.water = 0;
-            state.foods = [];
-            state.weights = parsed.weights || [];
-            state.chatHistory = parsed.chatHistory || [];
-            saveState();
-        }
-    }
-    state.apiKey = localStorage.getItem("geminiApiKey") || "";
-    render();
-    renderChat();
-    updateApiStatus();
-}
-
-function saveState() {
-    localStorage.setItem("geminiFoodTracker", JSON.stringify({
-        water: state.water,
-        foods: state.foods,
-        weights: state.weights,
-        date: state.date,
-        chatHistory: state.chatHistory
-    }));
+- Учитывай сегодня и историю предыдущих дней
+- Предлагай только разрешённые продукты
+- Не предлагай голодание`;
 }
 
 function updateApiStatus() {
@@ -234,19 +251,13 @@ function updateApiStatus() {
 
 function renderChat() {
     const container = document.getElementById("chat-messages");
-    container.innerHTML = `
-        <div class="message ai">
-            <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь на сайте — еду, воду, вес. Можешь спрашивать, что можно съесть, как лучше поступить сегодня, или просто поговорить о питании.</div>
-        </div>
-    `;
-
+    container.innerHTML = `<div class="message ai"><div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь — сегодня и вчера. Можешь спрашивать что угодно о питании.</div></div>`;
     state.chatHistory.forEach(msg => {
         const div = document.createElement("div");
         div.className = `message ${msg.role}`;
         div.innerHTML = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
         container.appendChild(div);
     });
-
     container.scrollTop = container.scrollHeight;
 }
 
@@ -261,7 +272,6 @@ async function sendToGemini(userText) {
         alert("Сначала добавь API-ключ Gemini (кнопка ⚙️)");
         return;
     }
-
     state.chatHistory.push({ role: "user", text: userText });
     renderChat();
     saveState();
@@ -276,17 +286,12 @@ async function sendToGemini(userText) {
 
     try {
         const systemPrompt = buildSystemPrompt();
-
         const contents = [
             { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "model", parts: [{ text: "Понял весь контекст. Я готов помогать, учитывая текущее состояние трекера и день недели." }] }
+            { role: "model", parts: [{ text: "Понял контекст, включая историю. Готов помогать." }] }
         ];
-
         state.chatHistory.slice(-12).forEach(msg => {
-            contents.push({
-                role: msg.role === "user" ? "user" : "model",
-                parts: [{ text: msg.text }]
-            });
+            contents.push({ role: msg.role === "user" ? "user" : "model", parts: [{ text: msg.text }] });
         });
 
         const response = await fetch(
@@ -294,31 +299,19 @@ async function sendToGemini(userText) {
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents,
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 800
-                    }
-                })
+                body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 800 } })
             }
         );
-
         const data = await response.json();
-
         document.getElementById("typing")?.remove();
 
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-            const reply = data.candidates[0].content.parts[0].text;
-            state.chatHistory.push({ role: "ai", text: reply });
-            saveState();
-            renderChat();
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            state.chatHistory.push({ role: "ai", text: data.candidates[0].content.parts[0].text });
         } else {
-            const errMsg = data.error?.message || "Не удалось получить ответ";
-            state.chatHistory.push({ role: "ai", text: `Ошибка: ${errMsg}` });
-            saveState();
-            renderChat();
+            state.chatHistory.push({ role: "ai", text: `Ошибка: ${data.error?.message || "нет ответа"}` });
         }
+        saveState();
+        renderChat();
     } catch (err) {
         document.getElementById("typing")?.remove();
         state.chatHistory.push({ role: "ai", text: "Ошибка соединения. Проверь интернет и API-ключ." });
@@ -340,17 +333,13 @@ function renderTimeline() {
     container.innerHTML = "";
     const hour = getCurrentHour();
     const schedule = getTodaySchedule();
-
     const header = document.querySelector(".schedule-card .card-header h2");
-    if (header) {
-        header.textContent = `📅 Расписание сегодня • ${getDayName()}`;
-    }
+    if (header) header.textContent = `📅 Расписание сегодня • ${getDayName()}`;
 
     schedule.forEach(item => {
         const el = document.createElement("div");
         el.className = "timeline-item";
         let status = "";
-
         if (item.id === "college") {
             status = "только вода / Nemoloko";
         } else if (hasMeal(item.id)) {
@@ -364,16 +353,9 @@ function renderTimeline() {
             } else if (hour >= startHour - 0.5 && hour <= startHour + 1.5) {
                 status = "сейчас";
                 el.classList.add("current");
-            } else {
-                status = "ожидается";
-            }
+            } else status = "ожидается";
         }
-
-        el.innerHTML = `
-            <span class="time">${item.time}</span>
-            <span class="meal-name">${item.name}</span>
-            <span class="status">${status}</span>
-        `;
+        el.innerHTML = `<span class="time">${item.time}</span><span class="meal-name">${item.name}</span><span class="status">${status}</span>`;
         container.appendChild(el);
     });
 }
@@ -394,13 +376,35 @@ function addFood(name, mealType, kcal) {
     const now = new Date();
     state.foods.unshift({
         name,
-        mealType,
-        kcal,
+        mealType: mealType || "своё",
+        kcal: Number(kcal) || 0,
         time: now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
         timestamp: now.getTime()
     });
     saveState();
     render();
+}
+
+function renderHistory() {
+    const container = document.getElementById("history-content");
+    if (!state.history || state.history.length === 0) {
+        container.innerHTML = `<p class="empty-state">Пока нет данных за предыдущие дни</p>`;
+        return;
+    }
+    container.innerHTML = "";
+    state.history.forEach(day => {
+        const totalKcal = day.foods.reduce((s, f) => s + (f.kcal || 0), 0);
+        const div = document.createElement("div");
+        div.className = "history-day";
+        let items = day.foods.map(f => `<div class="history-item">${f.time || ""} ${f.name} — ${f.kcal} ккал</div>`).join("");
+        if (!items) items = `<div class="history-item">Ничего не записано</div>`;
+        div.innerHTML = `
+            <div class="history-day-title">${day.date}</div>
+            ${items}
+            <div class="history-summary">Вода: ${day.water} стаканов • Всего ~${totalKcal} ккал</div>
+        `;
+        container.appendChild(div);
+    });
 }
 
 function render() {
@@ -425,7 +429,7 @@ function render() {
             item.innerHTML = `
                 <div class="food-meta">
                     <span>${food.name}</span>
-                    <span class="food-time">${food.time} • ${food.mealType} • ~${food.kcal} ккал</span>
+                    <span class="food-time">${food.time} • ${food.mealType || "своё"} • ~${food.kcal} ккал</span>
                 </div>
                 <button class="food-remove" data-index="${index}">×</button>
             `;
@@ -434,8 +438,7 @@ function render() {
     }
 
     document.getElementById("meals-count").textContent = state.foods.length;
-    const totalKcal = state.foods.reduce((sum, f) => sum + (f.kcal || 0), 0);
-    document.getElementById("calories-est").textContent = "~" + totalKcal;
+    document.getElementById("calories-est").textContent = "~" + state.foods.reduce((s, f) => s + (f.kcal || 0), 0);
 
     const wh = document.getElementById("weight-history");
     if (state.weights.length > 0) {
@@ -449,17 +452,13 @@ function render() {
 }
 
 function initApp() {
-    // Events
     document.getElementById("send-btn").addEventListener("click", () => {
         const input = document.getElementById("chat-input");
         const text = input.value.trim();
-        if (text) {
-            input.value = "";
-            sendToGemini(text);
-        }
+        if (text) { input.value = ""; sendToGemini(text); }
     });
 
-    document.getElementById("chat-input").addEventListener("keydown", (e) => {
+    document.getElementById("chat-input").addEventListener("keydown", e => {
         if (e.key === "Enter") document.getElementById("send-btn").click();
     });
 
@@ -481,30 +480,21 @@ function initApp() {
     });
 
     document.getElementById("save-settings").addEventListener("click", () => {
-        const key = document.getElementById("api-key-input").value.trim();
-        state.apiKey = key;
-        localStorage.setItem("geminiApiKey", key);
+        state.apiKey = document.getElementById("api-key-input").value.trim();
+        localStorage.setItem("geminiApiKey", state.apiKey);
         document.getElementById("settings-modal").classList.remove("active");
         updateApiStatus();
     });
 
     document.getElementById("add-water").addEventListener("click", () => {
-        if (state.water < 15) {
-            state.water++;
-            saveState();
-            render();
-        }
+        if (state.water < 15) { state.water++; saveState(); render(); }
     });
 
     document.getElementById("remove-water").addEventListener("click", () => {
-        if (state.water > 0) {
-            state.water--;
-            saveState();
-            render();
-        }
+        if (state.water > 0) { state.water--; saveState(); render(); }
     });
 
-    document.getElementById("food-list").addEventListener("click", (e) => {
+    document.getElementById("food-list").addEventListener("click", e => {
         if (e.target.classList.contains("food-remove")) {
             state.foods.splice(parseInt(e.target.dataset.index), 1);
             saveState();
@@ -520,13 +510,23 @@ function initApp() {
         });
     });
 
+    // Своя еда
+    document.getElementById("add-custom-food").addEventListener("click", () => {
+        const name = document.getElementById("custom-name").value.trim();
+        const kcal = parseInt(document.getElementById("custom-kcal").value);
+        if (name && kcal > 0) {
+            addFood(name, "своё", kcal);
+            document.getElementById("custom-name").value = "";
+            document.getElementById("custom-kcal").value = "";
+        } else {
+            alert("Напиши название и калории");
+        }
+    });
+
     document.getElementById("save-weight").addEventListener("click", () => {
         const val = parseFloat(document.getElementById("weight-input").value);
         if (val && val > 40 && val < 250) {
-            state.weights.push({
-                weight: val,
-                date: new Date().toLocaleDateString("ru-RU")
-            });
+            state.weights.push({ weight: val, date: new Date().toLocaleDateString("ru-RU") });
             document.getElementById("weight-input").value = "";
             saveState();
             render();
@@ -537,5 +537,4 @@ function initApp() {
     loadState();
 }
 
-// Запуск
 initLock();

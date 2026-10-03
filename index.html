@@ -66,7 +66,7 @@
             
             <div class="chat-messages" id="chat-messages">
                 <div class="message ai">
-                    <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь на сайте — еду, воду, вес. Можешь спрашивать, что можно съесть, как лучше поступить сегодня, или просто поговорить о питании.</div>
+                    <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь — сегодня и вчера. Можешь спрашивать что угодно о питании.</div>
                 </div>
             </div>
 
@@ -132,6 +132,16 @@
 
             <div class="meal-options" id="meal-options"></div>
 
+            <!-- Своя еда -->
+            <div class="custom-food">
+                <h3>➕ Своя еда</h3>
+                <div class="custom-food-row">
+                    <input type="text" id="custom-name" placeholder="Что съел?">
+                    <input type="number" id="custom-kcal" placeholder="Ккал" min="1" max="2000">
+                    <button class="btn btn-primary" id="add-custom-food">+</button>
+                </div>
+            </div>
+
             <div class="eaten-today">
                 <h3>Съедено сегодня</h3>
                 <div class="food-list" id="food-list"></div>
@@ -139,6 +149,16 @@
                     <p>Пока пусто</p>
                     <span>Отметь приём пищи — Gemini это увидит</span>
                 </div>
+            </div>
+        </section>
+
+        <!-- История -->
+        <section class="card history-card">
+            <div class="card-header">
+                <h2>📜 История</h2>
+            </div>
+            <div id="history-content">
+                <p class="empty-state">Пока нет данных за предыдущие дни</p>
             </div>
         </section>
 

@@ -289,7 +289,6 @@ async function sendToGemini(userText) {
     renderChat();
     saveState();
 
-    const imageToSend = selectedImage;
     clearSelectedPhoto();
 
     const container = document.getElementById("chat-messages");
@@ -302,9 +301,7 @@ async function sendToGemini(userText) {
 
     try {
         const systemPrompt = buildSystemPrompt();
-        const parts = [{ text: systemPrompt }];
 
-        // История + текущее сообщение
         const contents = [
             { role: "user", parts: [{ text: systemPrompt }] },
             { role: "model", parts: [{ text: "Понял контекст. Готов помогать, в том числе по фото." }] }
@@ -328,7 +325,7 @@ async function sendToGemini(userText) {
         });
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${state.apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

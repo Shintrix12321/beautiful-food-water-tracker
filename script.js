@@ -30,7 +30,8 @@ const MEALS = {
     ]
 };
 
-const SCHEDULE = [
+// Расписание на будни (пн-пт)
+const SCHEDULE_WEEKDAY = [
     { id: "breakfast", time: "07:45–08:00", name: "Плотный завтрак", required: true },
     { id: "college", time: "08:30–14:45", name: "Учёба (только вода / Nemoloko)", required: false },
     { id: "lunch", time: "15:15–15:45", name: "Сытный обед", required: true },
@@ -38,10 +39,36 @@ const SCHEDULE = [
     { id: "dinner", time: "20:15–20:45", name: "Белковый ужин", required: true }
 ];
 
+// Расписание на выходные (сб-вс) — более свободное
+const SCHEDULE_WEEKEND = [
+    { id: "breakfast", time: "09:00–10:30", name: "Завтрак (можно позже)", required: true },
+    { id: "lunch", time: "13:00–14:30", name: "Обед", required: true },
+    { id: "snack", time: "16:30–17:30", name: "Перекус (по желанию)", required: false },
+    { id: "dinner", time: "19:30–20:30", name: "Ужин", required: true }
+];
+
+const DAY_NAMES = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+function getTodaySchedule() {
+    const day = new Date().getDay(); // 0 = вс, 6 = сб
+    return (day === 0 || day === 6) ? SCHEDULE_WEEKEND : SCHEDULE_WEEKDAY;
+}
+
+function getDayName() {
+    return DAY_NAMES[new Date().getDay()];
+}
+
+function isWeekend() {
+    const day = new Date().getDay();
+    return day === 0 || day === 6;
+}
+
 // Системный промпт с полным контекстом
 function buildSystemPrompt() {
     const foodsToday = state.foods.map(f => `• ${f.time} [${f.mealType}] ${f.name} (~${f.kcal} ккал)`).join("\n") || "Пока ничего не отмечено";
     const lastWeight = state.weights.length ? state.weights[state.weights.length - 1] : null;
+    const dayName = getDayName();
+    const isWeekEnd = isWeekend();
 
     return `Ты — Google Gemini, умный помощник по питанию внутри персонального трекера.
 
@@ -63,12 +90,19 @@ function buildSystemPrompt() {
 - Сахар в напитках исключить
 - Сладкое только после обеда как десерт (до 150-200 ккал)
 
-РАСПИСАНИЕ (колледж ГАПОУ ИНК, группа ЭС2-26):
-- 07:45–08:00 — обязательный плотный завтрак
-- 08:30–14:45 — учёба, еда запрещена, только вода и Nemoloko (овсяное без сахара)
+СЕГОДНЯ: ${dayName} (${isWeekEnd ? "ВЫХОДНОЙ — учёбы нет" : "будний день, есть учёба"})
+
+РАСПИСАНИЕ СЕГОДНЯ:
+${isWeekEnd ? 
+`- 09:00–10:30 — завтрак (можно позже)
+- 13:00–14:30 — обед
+- 16:30–17:30 — перекус по желанию
+- 19:30–20:30 — ужин` :
+`- 07:45–08:00 — обязательный плотный завтрак
+- 08:30–14:45 — учёба, еда запрещена, только вода и Nemoloko
 - 15:15–15:45 — сытный обед
-- 18:00–18:30 — лёгкий перекус (по необходимости)
-- 20:15–20:45 — белковый ужин
+- 18:00–18:30 — лёгкий перекус
+- 20:15–20:45 — белковый ужин`}
 
 ТЕКУЩЕЕ СОСТОЯНИЕ НА САЙТЕ СЕГОДНЯ:
 - Вода: ${state.water} стаканов (${state.water * 250} мл из 2500)
@@ -78,9 +112,9 @@ ${foodsToday}
 
 ПРАВИЛА ОТВЕТА:
 - Отвечай по-русски, дружелюбно и по делу
-- Всегда учитывай то, что уже отмечено на сайте
+- Всегда учитывай то, что уже отмечено на сайте и какой сегодня день
 - Предлагай только разрешённые продукты из базы
-- Если пользователь спрашивает «что можно съесть» — смотри на время суток и уже съеденное
+- Если пользователь спрашивает «что можно съесть» — смотри на время суток, день недели и уже съеденное
 - Напоминай о воде и завтраке, если они пропущены
 - Не предлагай голодание или очень низкую калорийность`;
 }
@@ -138,7 +172,6 @@ function updateApiStatus() {
 
 function renderChat() {
     const container = document.getElementById("chat-messages");
-    // Оставляем только приветствие + историю
     container.innerHTML = `
         <div class="message ai">
             <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь на сайте — еду, воду, вес. Можешь спрашивать, что можно съесть, как лучше поступить сегодня, или просто поговорить о питании.</div>
@@ -167,12 +200,10 @@ async function sendToGemini(userText) {
         return;
     }
 
-    // Добавляем сообщение пользователя
     state.chatHistory.push({ role: "user", text: userText });
     renderChat();
     saveState();
 
-    // Показываем индикатор
     const container = document.getElementById("chat-messages");
     const typing = document.createElement("div");
     typing.className = "message ai";
@@ -184,13 +215,11 @@ async function sendToGemini(userText) {
     try {
         const systemPrompt = buildSystemPrompt();
 
-        // Формируем историю для API (последние 10 сообщений + системный)
         const contents = [
             { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "model", parts: [{ text: "Понял весь контекст. Я готов помогать, учитывая текущее состояние трекера." }] }
+            { role: "model", parts: [{ text: "Понял весь контекст. Я готов помогать, учитывая текущее состояние трекера и день недели." }] }
         ];
 
-        // Добавляем историю чата
         state.chatHistory.slice(-12).forEach(msg => {
             contents.push({
                 role: msg.role === "user" ? "user" : "model",
@@ -276,7 +305,6 @@ document.getElementById("save-settings").addEventListener("click", () => {
     updateApiStatus();
 });
 
-// Water & Food (same as before)
 function getCurrentHour() {
     return new Date().getHours() + new Date().getMinutes() / 60;
 }
@@ -289,8 +317,15 @@ function renderTimeline() {
     const container = document.getElementById("timeline");
     container.innerHTML = "";
     const hour = getCurrentHour();
+    const schedule = getTodaySchedule();
 
-    SCHEDULE.forEach(item => {
+    // Обновляем заголовок с днём недели
+    const header = document.querySelector(".schedule-card .card-header h2");
+    if (header) {
+        header.textContent = `📅 Расписание сегодня • ${getDayName()}`;
+    }
+
+    schedule.forEach(item => {
         const el = document.createElement("div");
         el.className = "timeline-item";
         let status = "";
@@ -305,7 +340,7 @@ function renderTimeline() {
             if (hour > startHour + 1.5 && item.required) {
                 status = "пропущено?";
                 el.classList.add("missed");
-            } else if (hour >= startHour - 0.5 && hour <= startHour + 1) {
+            } else if (hour >= startHour - 0.5 && hour <= startHour + 1.5) {
                 status = "сейчас";
                 el.classList.add("current");
             } else {

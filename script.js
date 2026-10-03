@@ -1,5 +1,70 @@
-// Трекер + настоящий Google Gemini с памятью
+// Трекер + Gemini + блокировка паролем 1202
 
+const CORRECT_PIN = "1202";
+let currentPin = "";
+
+// ===== LOCK SCREEN =====
+function initLock() {
+    const unlocked = sessionStorage.getItem("trackerUnlocked");
+    if (unlocked === "true") {
+        unlockSite();
+        return;
+    }
+
+    document.querySelectorAll(".pin-btn[data-num]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            if (currentPin.length < 4) {
+                currentPin += btn.dataset.num;
+                updateDots();
+                if (currentPin.length === 4) {
+                    setTimeout(checkPin, 200);
+                }
+            }
+        });
+    });
+
+    document.getElementById("pin-delete").addEventListener("click", () => {
+        currentPin = currentPin.slice(0, -1);
+        updateDots();
+        document.getElementById("lock-error").textContent = "";
+    });
+}
+
+function updateDots() {
+    const dots = document.querySelectorAll(".dot");
+    dots.forEach((dot, i) => {
+        dot.classList.remove("filled", "error");
+        if (i < currentPin.length) {
+            dot.classList.add("filled");
+        }
+    });
+}
+
+function checkPin() {
+    if (currentPin === CORRECT_PIN) {
+        sessionStorage.setItem("trackerUnlocked", "true");
+        unlockSite();
+    } else {
+        // Ошибка
+        document.querySelectorAll(".dot").forEach(d => d.classList.add("error"));
+        document.getElementById("lock-error").textContent = "Неверный пароль";
+        setTimeout(() => {
+            currentPin = "";
+            updateDots();
+            document.getElementById("lock-error").textContent = "";
+        }, 600);
+    }
+}
+
+function unlockSite() {
+    const lock = document.getElementById("lock-screen");
+    lock.classList.add("hidden");
+    document.getElementById("main-content").style.display = "block";
+    // Запускаем основной функционал
+    initApp();
+}
+
+// ===== MAIN APP =====
 const WATER_GOAL_GLASSES = 10;
 const ML_PER_GLASS = 250;
 
@@ -30,7 +95,6 @@ const MEALS = {
     ]
 };
 
-// Расписание на будни (пн-пт)
 const SCHEDULE_WEEKDAY = [
     { id: "breakfast", time: "07:45–08:00", name: "Плотный завтрак", required: true },
     { id: "college", time: "08:30–14:45", name: "Учёба (только вода / Nemoloko)", required: false },
@@ -39,7 +103,6 @@ const SCHEDULE_WEEKDAY = [
     { id: "dinner", time: "20:15–20:45", name: "Белковый ужин", required: true }
 ];
 
-// Расписание на выходные (сб-вс) — более свободное
 const SCHEDULE_WEEKEND = [
     { id: "breakfast", time: "09:00–10:30", name: "Завтрак (можно позже)", required: true },
     { id: "lunch", time: "13:00–14:30", name: "Обед", required: true },
@@ -50,7 +113,7 @@ const SCHEDULE_WEEKEND = [
 const DAY_NAMES = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
 function getTodaySchedule() {
-    const day = new Date().getDay(); // 0 = вс, 6 = сб
+    const day = new Date().getDay();
     return (day === 0 || day === 6) ? SCHEDULE_WEEKEND : SCHEDULE_WEEKDAY;
 }
 
@@ -63,7 +126,6 @@ function isWeekend() {
     return day === 0 || day === 6;
 }
 
-// Системный промпт с полным контекстом
 function buildSystemPrompt() {
     const foodsToday = state.foods.map(f => `• ${f.time} [${f.mealType}] ${f.name} (~${f.kcal} ккал)`).join("\n") || "Пока ничего не отмечено";
     const lastWeight = state.weights.length ? state.weights[state.weights.length - 1] : null;
@@ -265,46 +327,6 @@ async function sendToGemini(userText) {
     }
 }
 
-// UI Events
-document.getElementById("send-btn").addEventListener("click", () => {
-    const input = document.getElementById("chat-input");
-    const text = input.value.trim();
-    if (text) {
-        input.value = "";
-        sendToGemini(text);
-    }
-});
-
-document.getElementById("chat-input").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("send-btn").click();
-});
-
-document.getElementById("clear-chat").addEventListener("click", () => {
-    if (confirm("Очистить историю чата?")) {
-        state.chatHistory = [];
-        saveState();
-        renderChat();
-    }
-});
-
-// Settings
-document.getElementById("settings-btn").addEventListener("click", () => {
-    document.getElementById("api-key-input").value = state.apiKey;
-    document.getElementById("settings-modal").classList.add("active");
-});
-
-document.getElementById("cancel-settings").addEventListener("click", () => {
-    document.getElementById("settings-modal").classList.remove("active");
-});
-
-document.getElementById("save-settings").addEventListener("click", () => {
-    const key = document.getElementById("api-key-input").value.trim();
-    state.apiKey = key;
-    localStorage.setItem("geminiApiKey", key);
-    document.getElementById("settings-modal").classList.remove("active");
-    updateApiStatus();
-});
-
 function getCurrentHour() {
     return new Date().getHours() + new Date().getMinutes() / 60;
 }
@@ -319,7 +341,6 @@ function renderTimeline() {
     const hour = getCurrentHour();
     const schedule = getTodaySchedule();
 
-    // Обновляем заголовок с днём недели
     const header = document.querySelector(".schedule-card .card-header h2");
     if (header) {
         header.textContent = `📅 Расписание сегодня • ${getDayName()}`;
@@ -427,51 +448,94 @@ function render() {
     renderTimeline();
 }
 
-document.getElementById("add-water").addEventListener("click", () => {
-    if (state.water < 15) {
-        state.water++;
-        saveState();
-        render();
-    }
-});
-
-document.getElementById("remove-water").addEventListener("click", () => {
-    if (state.water > 0) {
-        state.water--;
-        saveState();
-        render();
-    }
-});
-
-document.getElementById("food-list").addEventListener("click", (e) => {
-    if (e.target.classList.contains("food-remove")) {
-        state.foods.splice(parseInt(e.target.dataset.index), 1);
-        saveState();
-        render();
-    }
-});
-
-document.querySelectorAll(".meal-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-        document.querySelectorAll(".meal-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        renderMealOptions(tab.dataset.meal);
+function initApp() {
+    // Events
+    document.getElementById("send-btn").addEventListener("click", () => {
+        const input = document.getElementById("chat-input");
+        const text = input.value.trim();
+        if (text) {
+            input.value = "";
+            sendToGemini(text);
+        }
     });
-});
 
-document.getElementById("save-weight").addEventListener("click", () => {
-    const val = parseFloat(document.getElementById("weight-input").value);
-    if (val && val > 40 && val < 250) {
-        state.weights.push({
-            weight: val,
-            date: new Date().toLocaleDateString("ru-RU")
+    document.getElementById("chat-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("send-btn").click();
+    });
+
+    document.getElementById("clear-chat").addEventListener("click", () => {
+        if (confirm("Очистить историю чата?")) {
+            state.chatHistory = [];
+            saveState();
+            renderChat();
+        }
+    });
+
+    document.getElementById("settings-btn").addEventListener("click", () => {
+        document.getElementById("api-key-input").value = state.apiKey;
+        document.getElementById("settings-modal").classList.add("active");
+    });
+
+    document.getElementById("cancel-settings").addEventListener("click", () => {
+        document.getElementById("settings-modal").classList.remove("active");
+    });
+
+    document.getElementById("save-settings").addEventListener("click", () => {
+        const key = document.getElementById("api-key-input").value.trim();
+        state.apiKey = key;
+        localStorage.setItem("geminiApiKey", key);
+        document.getElementById("settings-modal").classList.remove("active");
+        updateApiStatus();
+    });
+
+    document.getElementById("add-water").addEventListener("click", () => {
+        if (state.water < 15) {
+            state.water++;
+            saveState();
+            render();
+        }
+    });
+
+    document.getElementById("remove-water").addEventListener("click", () => {
+        if (state.water > 0) {
+            state.water--;
+            saveState();
+            render();
+        }
+    });
+
+    document.getElementById("food-list").addEventListener("click", (e) => {
+        if (e.target.classList.contains("food-remove")) {
+            state.foods.splice(parseInt(e.target.dataset.index), 1);
+            saveState();
+            render();
+        }
+    });
+
+    document.querySelectorAll(".meal-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            document.querySelectorAll(".meal-tab").forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            renderMealOptions(tab.dataset.meal);
         });
-        document.getElementById("weight-input").value = "";
-        saveState();
-        render();
-    }
-});
+    });
 
-// Init
-renderMealOptions("breakfast");
-loadState();
+    document.getElementById("save-weight").addEventListener("click", () => {
+        const val = parseFloat(document.getElementById("weight-input").value);
+        if (val && val > 40 && val < 250) {
+            state.weights.push({
+                weight: val,
+                date: new Date().toLocaleDateString("ru-RU")
+            });
+            document.getElementById("weight-input").value = "";
+            saveState();
+            render();
+        }
+    });
+
+    renderMealOptions("breakfast");
+    loadState();
+}
+
+// Запуск
+initLock();

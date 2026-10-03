@@ -26,6 +26,132 @@ body {
     line-height: 1.5;
 }
 
+/* ===== LOCK SCREEN ===== */
+.lock-screen {
+    position: fixed;
+    inset: 0;
+    background: #0c0c10;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.lock-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.lock-content {
+    text-align: center;
+    width: 100%;
+    max-width: 320px;
+    padding: 20px;
+}
+
+.lock-icon {
+    font-size: 2.8rem;
+    margin-bottom: 16px;
+}
+
+.lock-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #e8e6e3;
+}
+
+.lock-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+}
+
+.pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    transition: all 0.2s;
+}
+
+.dot.filled {
+    background: #7c6bf0;
+    border-color: #7c6bf0;
+    box-shadow: 0 0 12px rgba(124, 107, 240, 0.5);
+}
+
+.dot.error {
+    background: #e86c6c;
+    border-color: #e86c6c;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+.lock-error {
+    height: 20px;
+    font-size: 0.85rem;
+    color: #e86c6c;
+    margin-bottom: 16px;
+}
+
+.pin-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    max-width: 260px;
+    margin: 0 auto;
+}
+
+.pin-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.06);
+    color: #e8e6e3;
+    font-size: 1.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pin-btn:active {
+    background: rgba(124, 107, 240, 0.3);
+    transform: scale(0.92);
+}
+
+.pin-btn.empty {
+    background: transparent;
+    pointer-events: none;
+}
+
+.pin-btn.delete {
+    font-size: 1.3rem;
+    background: rgba(255,255,255,0.04);
+}
+
+/* ===== MAIN STYLES ===== */
 .bg-gradient {
     position: fixed;
     inset: 0;
@@ -41,7 +167,6 @@ body {
     padding: 20px 14px 70px;
 }
 
-/* Header */
 .header {
     text-align: center;
     margin-bottom: 20px;
@@ -90,7 +215,6 @@ body {
     justify-content: center;
 }
 
-/* Cards */
 .card {
     background: var(--card);
     backdrop-filter: blur(16px);
@@ -130,7 +254,6 @@ body {
     cursor: pointer;
 }
 
-/* Chat */
 .chat-card {
     display: flex;
     flex-direction: column;
@@ -211,7 +334,6 @@ body {
     color: #4ade80;
 }
 
-/* Water */
 .water-visual {
     display: flex;
     align-items: center;
@@ -302,7 +424,6 @@ body {
     text-align: center;
 }
 
-/* Timeline */
 .timeline {
     display: flex;
     flex-direction: column;
@@ -339,7 +460,6 @@ body {
 .meal-name { flex: 1; }
 .status { font-size: 0.78rem; color: var(--text-muted); }
 
-/* Meals */
 .meal-tabs {
     display: flex;
     gap: 6px;
@@ -449,7 +569,6 @@ body {
     font-size: 0.78rem;
 }
 
-/* Weight */
 .weight-input-row {
     display: flex;
     gap: 8px;
@@ -477,7 +596,6 @@ body {
     color: var(--text-muted);
 }
 
-/* Stats */
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -503,7 +621,6 @@ body {
     color: var(--text-muted);
 }
 
-/* Footer */
 .footer {
     text-align: center;
     color: var(--text-muted);
@@ -511,7 +628,6 @@ body {
     margin-top: 10px;
 }
 
-/* Modal */
 .modal {
     position: fixed;
     inset: 0;
@@ -577,7 +693,6 @@ body {
     flex: 1;
 }
 
-/* Loading */
 .typing {
     font-size: 0.85rem;
     color: var(--text-muted);
@@ -587,4 +702,5 @@ body {
 @media (max-width: 400px) {
     .water-visual { flex-direction: column; gap: 14px; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
+    .pin-btn { width: 64px; height: 64px; }
 }

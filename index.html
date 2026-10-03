@@ -2,15 +2,48 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Трекер + Gemini • 119 → 75</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Экран блокировки -->
+    <div id="lock-screen" class="lock-screen">
+        <div class="lock-content">
+            <div class="lock-icon">🔒</div>
+            <h2 class="lock-title">Введите пароль</h2>
+            <p class="lock-subtitle">Трекер питания</p>
+            
+            <div class="pin-dots" id="pin-dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            
+            <p class="lock-error" id="lock-error"></p>
+            
+            <div class="pin-pad">
+                <button class="pin-btn" data-num="1">1</button>
+                <button class="pin-btn" data-num="2">2</button>
+                <button class="pin-btn" data-num="3">3</button>
+                <button class="pin-btn" data-num="4">4</button>
+                <button class="pin-btn" data-num="5">5</button>
+                <button class="pin-btn" data-num="6">6</button>
+                <button class="pin-btn" data-num="7">7</button>
+                <button class="pin-btn" data-num="8">8</button>
+                <button class="pin-btn" data-num="9">9</button>
+                <button class="pin-btn empty"></button>
+                <button class="pin-btn" data-num="0">0</button>
+                <button class="pin-btn delete" id="pin-delete">⌫</button>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-gradient"></div>
     
-    <div class="container">
+    <div class="container" id="main-content" style="display: none;">
         <header class="header">
             <div class="header-top">
                 <h1 class="title">Трекер + Gemini</h1>

@@ -1,11 +1,8 @@
-// Печальный Трекер Питания и Воды
-// Контекст: 16 лет, 183 см, 119→75 кг, колледж ГАПОУ ИНК ЭС2-26
+// Трекер + настоящий Google Gemini с памятью
 
-const WATER_GOAL_ML = 2500;
-const ML_PER_GLASS = 250;
 const WATER_GOAL_GLASSES = 10;
+const ML_PER_GLASS = 250;
 
-// База еды строго по ограничениям
 const MEALS = {
     breakfast: [
         { name: "Яйца 3 шт + 2 ржаных хлеба с творожным сыром + огурец", kcal: 480 },
@@ -41,115 +38,251 @@ const SCHEDULE = [
     { id: "dinner", time: "20:15–20:45", name: "Белковый ужин", required: true }
 ];
 
-// Печальные фразы ИИ
-const SAD_PHRASES = {
-    morning: [
-        "Утро... Ты уже поел? Тело ждёт топлива. Без завтрака всё замедляется.",
-        "Я тихо надеюсь, что ты не пропустил завтрак. Это важно...",
-        "07:45. Время плотного завтрака. Не игнорируй его, пожалуйста."
-    ],
-    noBreakfast: [
-        "Ты не отметил завтрак до 09:30... Метаболизм уже начал грустить. Выпей Nemoloko на перемене и добавь 50 г углеводов к обеду.",
-        "Завтрак пропущен. Мне жаль. Теперь придётся компенсировать на обеде. Не голодай.",
-        "Без завтрака день становится тяжелее. Я предупреждал... Добавь углеводов к обеду."
-    ],
-    lowWater: [
-        "К 16:00 меньше 3 стаканов... Вода важна. Иначе тело путает жажду с голодом.",
-        "Ты пьёшь слишком мало. Мне тревожно. Выпей хотя бы стакан сейчас.",
-        "Вода... её почти нет. Ложное чувство голода уже близко."
-    ],
-    goodWater: [
-        "С водой сегодня лучше. Это радует... хоть немного.",
-        "Ты пьёшь. Хорошо. Продолжай."
-    ],
-    evening: [
-        "Вечер. Ужин должен быть белковым и не слишком поздним.",
-        "Скоро ужин. Не переедай. Тело устало за день."
-    ],
-    default: [
-        "Я здесь. Просто смотрю. Не торопись с весом. 3–4 кг в месяц — это правильно.",
-        "Растущий организм... нельзя спешить. Я буду рядом.",
-        "119 → 75. Долгий путь. Но мы пройдём его спокойно.",
-        "Если тяжело — просто отметь воду. Маленький шаг тоже считается."
-    ],
-    weightDown: [
-        "Вес снизился... Тихая радость. Но не ускоряйся.",
-        "Минус есть. Хорошо. Продолжай в том же темпе."
-    ],
-    weightSame: [
-        "Вес стоит. Бывает. Главное — не срываться и не голодать."
-    ]
-};
+// Системный промпт с полным контекстом
+function buildSystemPrompt() {
+    const foodsToday = state.foods.map(f => `• ${f.time} [${f.mealType}] ${f.name} (~${f.kcal} ккал)`).join("\n") || "Пока ничего не отмечено";
+    const lastWeight = state.weights.length ? state.weights[state.weights.length - 1] : null;
+
+    return `Ты — Google Gemini, умный помощник по питанию внутри персонального трекера.
+
+ДАННЫЕ ПОЛЬЗОВАТЕЛЯ:
+- Возраст: 16 лет (растущий организм, жёсткие диеты и голодание ЗАПРЕЩЕНЫ)
+- Рост: 183 см
+- Текущий вес: ${lastWeight ? lastWeight.weight + " кг" : "119 кг"}
+- Целевой вес: 75 кг
+- Безопасный темп: 3–4 кг в месяц
+- Целевая калорийность: 2300–2400 ккал в день
+- Норма воды: 2.5 литра (10 стаканов по 250 мл)
+
+ЖЁСТКИЕ ИСКЛЮЧЕНИЯ (никогда не предлагай):
+- Рыба — полностью запрещена
+- Цитрусовые (лимон, апельсин и т.д.) — запрещены
+- Сложная зелень и листовые салаты — запрещены
+- Разрешены только простые овощи: огурцы, помидоры, капуста, кабачки, замороженные овощные смеси
+- Белый хлеб заменить на ржаной/цельнозерновой
+- Сахар в напитках исключить
+- Сладкое только после обеда как десерт (до 150-200 ккал)
+
+РАСПИСАНИЕ (колледж ГАПОУ ИНК, группа ЭС2-26):
+- 07:45–08:00 — обязательный плотный завтрак
+- 08:30–14:45 — учёба, еда запрещена, только вода и Nemoloko (овсяное без сахара)
+- 15:15–15:45 — сытный обед
+- 18:00–18:30 — лёгкий перекус (по необходимости)
+- 20:15–20:45 — белковый ужин
+
+ТЕКУЩЕЕ СОСТОЯНИЕ НА САЙТЕ СЕГОДНЯ:
+- Вода: ${state.water} стаканов (${state.water * 250} мл из 2500)
+- Съедено сегодня:
+${foodsToday}
+- Оценка калорий сегодня: ~${state.foods.reduce((s, f) => s + (f.kcal || 0), 0)} ккал
+
+ПРАВИЛА ОТВЕТА:
+- Отвечай по-русски, дружелюбно и по делу
+- Всегда учитывай то, что уже отмечено на сайте
+- Предлагай только разрешённые продукты из базы
+- Если пользователь спрашивает «что можно съесть» — смотри на время суток и уже съеденное
+- Напоминай о воде и завтраке, если они пропущены
+- Не предлагай голодание или очень низкую калорийность`;
+}
 
 let state = {
     water: 0,
     foods: [],
     weights: [],
     date: new Date().toDateString(),
-    lastAiMessage: ""
+    chatHistory: [],
+    apiKey: localStorage.getItem("geminiApiKey") || ""
 };
 
 function loadState() {
-    const saved = localStorage.getItem('sadFoodWaterTracker');
+    const saved = localStorage.getItem("geminiFoodTracker");
     if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.date === new Date().toDateString()) {
-            state = parsed;
+            state = { ...state, ...parsed };
         } else {
-            // Новый день
             state.date = new Date().toDateString();
             state.water = 0;
             state.foods = [];
             state.weights = parsed.weights || [];
+            state.chatHistory = parsed.chatHistory || [];
             saveState();
         }
     }
+    state.apiKey = localStorage.getItem("geminiApiKey") || "";
     render();
-    updateAiMessage();
+    renderChat();
+    updateApiStatus();
 }
 
 function saveState() {
-    localStorage.setItem('sadFoodWaterTracker', JSON.stringify(state));
+    localStorage.setItem("geminiFoodTracker", JSON.stringify({
+        water: state.water,
+        foods: state.foods,
+        weights: state.weights,
+        date: state.date,
+        chatHistory: state.chatHistory
+    }));
 }
 
+function updateApiStatus() {
+    const el = document.getElementById("api-status");
+    if (state.apiKey) {
+        el.textContent = "Gemini подключён ✓";
+        el.classList.add("ok");
+    } else {
+        el.textContent = "API-ключ не задан • нажми ⚙️";
+        el.classList.remove("ok");
+    }
+}
+
+function renderChat() {
+    const container = document.getElementById("chat-messages");
+    // Оставляем только приветствие + историю
+    container.innerHTML = `
+        <div class="message ai">
+            <div class="bubble">Привет! Я Gemini. Я вижу всё, что ты отмечаешь на сайте — еду, воду, вес. Можешь спрашивать, что можно съесть, как лучше поступить сегодня, или просто поговорить о питании.</div>
+        </div>
+    `;
+
+    state.chatHistory.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = `message ${msg.role}`;
+        div.innerHTML = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
+        container.appendChild(div);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function sendToGemini(userText) {
+    if (!state.apiKey) {
+        alert("Сначала добавь API-ключ Gemini (кнопка ⚙️)");
+        return;
+    }
+
+    // Добавляем сообщение пользователя
+    state.chatHistory.push({ role: "user", text: userText });
+    renderChat();
+    saveState();
+
+    // Показываем индикатор
+    const container = document.getElementById("chat-messages");
+    const typing = document.createElement("div");
+    typing.className = "message ai";
+    typing.id = "typing";
+    typing.innerHTML = `<div class="bubble typing">Gemini думает...</div>`;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+
+    try {
+        const systemPrompt = buildSystemPrompt();
+
+        // Формируем историю для API (последние 10 сообщений + системный)
+        const contents = [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            { role: "model", parts: [{ text: "Понял весь контекст. Я готов помогать, учитывая текущее состояние трекера." }] }
+        ];
+
+        // Добавляем историю чата
+        state.chatHistory.slice(-12).forEach(msg => {
+            contents.push({
+                role: msg.role === "user" ? "user" : "model",
+                parts: [{ text: msg.text }]
+            });
+        });
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.apiKey}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents,
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 800
+                    }
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        document.getElementById("typing")?.remove();
+
+        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+            const reply = data.candidates[0].content.parts[0].text;
+            state.chatHistory.push({ role: "ai", text: reply });
+            saveState();
+            renderChat();
+        } else {
+            const errMsg = data.error?.message || "Не удалось получить ответ";
+            state.chatHistory.push({ role: "ai", text: `Ошибка: ${errMsg}` });
+            saveState();
+            renderChat();
+        }
+    } catch (err) {
+        document.getElementById("typing")?.remove();
+        state.chatHistory.push({ role: "ai", text: "Ошибка соединения. Проверь интернет и API-ключ." });
+        saveState();
+        renderChat();
+    }
+}
+
+// UI Events
+document.getElementById("send-btn").addEventListener("click", () => {
+    const input = document.getElementById("chat-input");
+    const text = input.value.trim();
+    if (text) {
+        input.value = "";
+        sendToGemini(text);
+    }
+});
+
+document.getElementById("chat-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("send-btn").click();
+});
+
+document.getElementById("clear-chat").addEventListener("click", () => {
+    if (confirm("Очистить историю чата?")) {
+        state.chatHistory = [];
+        saveState();
+        renderChat();
+    }
+});
+
+// Settings
+document.getElementById("settings-btn").addEventListener("click", () => {
+    document.getElementById("api-key-input").value = state.apiKey;
+    document.getElementById("settings-modal").classList.add("active");
+});
+
+document.getElementById("cancel-settings").addEventListener("click", () => {
+    document.getElementById("settings-modal").classList.remove("active");
+});
+
+document.getElementById("save-settings").addEventListener("click", () => {
+    const key = document.getElementById("api-key-input").value.trim();
+    state.apiKey = key;
+    localStorage.setItem("geminiApiKey", key);
+    document.getElementById("settings-modal").classList.remove("active");
+    updateApiStatus();
+});
+
+// Water & Food (same as before)
 function getCurrentHour() {
     return new Date().getHours() + new Date().getMinutes() / 60;
 }
 
 function hasMeal(type) {
     return state.foods.some(f => f.mealType === type);
-}
-
-function updateAiMessage() {
-    const hour = getCurrentHour();
-    let message = "";
-
-    // Пропущенный завтрак
-    if (hour >= 9.5 && !hasMeal("breakfast")) {
-        message = SAD_PHRASES.noBreakfast[Math.floor(Math.random() * SAD_PHRASES.noBreakfast.length)];
-    }
-    // Мало воды к 16:00
-    else if (hour >= 16 && state.water < 3) {
-        message = SAD_PHRASES.lowWater[Math.floor(Math.random() * SAD_PHRASES.lowWater.length)];
-    }
-    // Утро
-    else if (hour >= 7 && hour < 9) {
-        message = SAD_PHRASES.morning[Math.floor(Math.random() * SAD_PHRASES.morning.length)];
-    }
-    // Вечер
-    else if (hour >= 19 && hour < 21) {
-        message = SAD_PHRASES.evening[Math.floor(Math.random() * SAD_PHRASES.evening.length)];
-    }
-    // Хорошая вода
-    else if (state.water >= 6) {
-        message = SAD_PHRASES.goodWater[Math.floor(Math.random() * SAD_PHRASES.goodWater.length)];
-    }
-    else {
-        message = SAD_PHRASES.default[Math.floor(Math.random() * SAD_PHRASES.default.length)];
-    }
-
-    document.getElementById("ai-main-message").textContent = message;
-    state.lastAiMessage = message;
 }
 
 function renderTimeline() {
@@ -160,9 +293,7 @@ function renderTimeline() {
     SCHEDULE.forEach(item => {
         const el = document.createElement("div");
         el.className = "timeline-item";
-
         let status = "";
-        let statusClass = "";
 
         if (item.id === "college") {
             status = "только вода / Nemoloko";
@@ -170,7 +301,6 @@ function renderTimeline() {
             status = "✓ отмечено";
             el.classList.add("done");
         } else {
-            // Примерное время
             const startHour = parseFloat(item.time.split("–")[0].replace(":", "."));
             if (hour > startHour + 1.5 && item.required) {
                 status = "пропущено?";
@@ -195,35 +325,29 @@ function renderTimeline() {
 function renderMealOptions(type = "breakfast") {
     const container = document.getElementById("meal-options");
     container.innerHTML = "";
-
     MEALS[type].forEach(opt => {
         const btn = document.createElement("button");
         btn.className = "option-btn";
         btn.innerHTML = `${opt.name}<small>~${opt.kcal} ккал</small>`;
-        btn.addEventListener("click", () => {
-            addFood(opt.name, type, opt.kcal);
-        });
+        btn.addEventListener("click", () => addFood(opt.name, type, opt.kcal));
         container.appendChild(btn);
     });
 }
 
 function addFood(name, mealType, kcal) {
     const now = new Date();
-    const timeStr = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
     state.foods.unshift({
         name,
         mealType,
         kcal,
-        time: timeStr,
+        time: now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
         timestamp: now.getTime()
     });
     saveState();
     render();
-    updateAiMessage();
 }
 
 function render() {
-    // Water
     const percent = Math.min((state.water / WATER_GOAL_GLASSES) * 100, 100);
     document.getElementById("water-fill").style.height = percent + "%";
     document.getElementById("water-count").textContent = `${state.water} / ${WATER_GOAL_GLASSES}`;
@@ -231,7 +355,6 @@ function render() {
     document.getElementById("ml-drunk").textContent = state.water * ML_PER_GLASS;
     document.getElementById("water-percent").textContent = Math.round(percent) + "%";
 
-    // Foods
     const list = document.getElementById("food-list");
     const empty = document.getElementById("empty-food");
     list.innerHTML = "";
@@ -254,30 +377,26 @@ function render() {
         });
     }
 
-    // Stats
     document.getElementById("meals-count").textContent = state.foods.length;
     const totalKcal = state.foods.reduce((sum, f) => sum + (f.kcal || 0), 0);
     document.getElementById("calories-est").textContent = "~" + totalKcal;
 
-    // Weight history
     const wh = document.getElementById("weight-history");
     if (state.weights.length > 0) {
         const last = state.weights[state.weights.length - 1];
         wh.textContent = `Последний: ${last.weight} кг (${last.date})`;
     } else {
-        wh.textContent = "Пока нет записей. Можно вносить раз в 2 недели.";
+        wh.textContent = "Пока нет записей";
     }
 
     renderTimeline();
 }
 
-// Events
 document.getElementById("add-water").addEventListener("click", () => {
     if (state.water < 15) {
         state.water++;
         saveState();
         render();
-        updateAiMessage();
     }
 });
 
@@ -286,17 +405,14 @@ document.getElementById("remove-water").addEventListener("click", () => {
         state.water--;
         saveState();
         render();
-        updateAiMessage();
     }
 });
 
 document.getElementById("food-list").addEventListener("click", (e) => {
     if (e.target.classList.contains("food-remove")) {
-        const index = parseInt(e.target.dataset.index);
-        state.foods.splice(index, 1);
+        state.foods.splice(parseInt(e.target.dataset.index), 1);
         saveState();
         render();
-        updateAiMessage();
     }
 });
 
@@ -311,27 +427,16 @@ document.querySelectorAll(".meal-tab").forEach(tab => {
 document.getElementById("save-weight").addEventListener("click", () => {
     const val = parseFloat(document.getElementById("weight-input").value);
     if (val && val > 40 && val < 250) {
-        const today = new Date().toLocaleDateString("ru-RU");
-        state.weights.push({ weight: val, date: today });
+        state.weights.push({
+            weight: val,
+            date: new Date().toLocaleDateString("ru-RU")
+        });
         document.getElementById("weight-input").value = "";
         saveState();
         render();
-
-        // Печальный комментарий
-        const prev = state.weights.length > 1 ? state.weights[state.weights.length - 2].weight : 119;
-        if (val < prev) {
-            document.getElementById("ai-main-message").textContent =
-                SAD_PHRASES.weightDown[Math.floor(Math.random() * SAD_PHRASES.weightDown.length)];
-        } else {
-            document.getElementById("ai-main-message").textContent =
-                SAD_PHRASES.weightSame[Math.floor(Math.random() * SAD_PHRASES.weightSame.length)];
-        }
     }
 });
 
 // Init
 renderMealOptions("breakfast");
 loadState();
-
-// Обновлять ИИ каждые 5 минут
-setInterval(updateAiMessage, 5 * 60 * 1000);

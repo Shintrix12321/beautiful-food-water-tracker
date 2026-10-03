@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food & Water Tracker ✨</title>
+    <title>Печальный Трекер • 119 → 75</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -12,26 +12,35 @@
     
     <div class="container">
         <header class="header">
-            <h1 class="title">
-                <span class="emoji">🥗</span> Твой Трекер
-            </h1>
-            <p class="subtitle">Красиво отслеживай еду и воду • AI-ready</p>
+            <h1 class="title">Печальный Трекер</h1>
+            <p class="subtitle">16 лет • 183 см • 119 → 75 кг</p>
+            <div class="profile-stats">
+                <span>Цель: 2300–2400 ккал</span>
+                <span>•</span>
+                <span>Вода: 2.5 л</span>
+            </div>
         </header>
 
-        <!-- Water Section -->
+        <!-- AI Message (печальная) -->
+        <section class="card ai-message-card" id="ai-message-card">
+            <div class="ai-avatar">😔</div>
+            <div class="ai-text" id="ai-main-message">
+                Я здесь... тихо слежу за тобой. Не торопись. Тело ещё растёт.
+            </div>
+        </section>
+
+        <!-- Water -->
         <section class="card water-card">
             <div class="card-header">
-                <h2>💧 Вода сегодня</h2>
-                <span class="badge" id="water-count">0 / 8</span>
+                <h2>💧 Вода</h2>
+                <span class="badge" id="water-count">0 / 10</span>
             </div>
             
             <div class="water-visual">
                 <div class="glass-container">
                     <div class="glass">
                         <div class="water-fill" id="water-fill"></div>
-                        <div class="bubbles"></div>
                     </div>
-                    <div class="glass-base"></div>
                 </div>
                 <div class="water-stats">
                     <div class="stat">
@@ -40,89 +49,93 @@
                     </div>
                     <div class="stat">
                         <span class="stat-value" id="ml-drunk">0</span>
-                        <span class="stat-label">мл</span>
+                        <span class="stat-label">мл из 2500</span>
                     </div>
                 </div>
             </div>
 
             <div class="actions">
-                <button class="btn btn-primary" id="add-water">
-                    <span>+ Стакан</span>
-                </button>
+                <button class="btn btn-primary" id="add-water">+ Стакан (250 мл)</button>
                 <button class="btn btn-secondary" id="remove-water">−</button>
             </div>
+            <p class="hint">На переменах можно Nemoloko (овсяное без сахара)</p>
         </section>
 
-        <!-- Food Section -->
+        <!-- Schedule Timeline -->
+        <section class="card schedule-card">
+            <div class="card-header">
+                <h2>📅 Расписание сегодня</h2>
+            </div>
+            <div class="timeline" id="timeline">
+                <!-- filled by JS -->
+            </div>
+        </section>
+
+        <!-- Meals -->
         <section class="card food-card">
             <div class="card-header">
-                <h2>🍽️ Что съел</h2>
-                <button class="btn-icon" id="add-food-btn" title="Добавить">+</button>
+                <h2>🍽️ Приёмы пищи</h2>
             </div>
 
-            <div class="quick-foods" id="quick-foods">
-                <!-- Quick add buttons will be here -->
+            <div class="meal-tabs">
+                <button class="meal-tab active" data-meal="breakfast">Завтрак</button>
+                <button class="meal-tab" data-meal="lunch">Обед</button>
+                <button class="meal-tab" data-meal="snack">Перекус</button>
+                <button class="meal-tab" data-meal="dinner">Ужин</button>
             </div>
 
-            <div class="food-list" id="food-list">
-                <!-- Food items appear here -->
+            <div class="meal-options" id="meal-options">
+                <!-- options appear here -->
             </div>
 
-            <div class="empty-state" id="empty-food">
-                <p>Пока ничего не добавлено</p>
-                <span>Нажми + или выбери быстрый вариант</span>
+            <div class="eaten-today">
+                <h3>Съедено сегодня</h3>
+                <div class="food-list" id="food-list"></div>
+                <div class="empty-state" id="empty-food">
+                    <p>Пока пусто...</p>
+                    <span>Я жду, когда ты отметишь первый приём</span>
+                </div>
             </div>
         </section>
 
-        <!-- AI Suggestions -->
-        <section class="card ai-card">
+        <!-- Weight -->
+        <section class="card weight-card">
             <div class="card-header">
-                <h2>🤖 AI-рекомендации</h2>
-                <span class="ai-badge">Google AI ready</span>
+                <h2>⚖️ Вес</h2>
+                <span class="badge" id="weight-badge">раз в 2 недели</span>
             </div>
-            <div class="ai-content" id="ai-content">
-                <p class="ai-placeholder">На основе твоих записей Google AI сможет подсказывать:
-                • что добавить в рацион
-                • когда лучше выпить воды
-                • баланс БЖУ
-                </p>
-                <button class="btn btn-ai" id="get-ai-tip">Получить совет (демо)</button>
+            <div class="weight-input-row">
+                <input type="number" id="weight-input" placeholder="Текущий вес (кг)" step="0.1" min="50" max="200">
+                <button class="btn btn-primary" id="save-weight">Записать</button>
             </div>
+            <div class="weight-history" id="weight-history"></div>
         </section>
 
-        <!-- History / Stats -->
+        <!-- Stats -->
         <section class="card stats-card">
             <div class="card-header">
                 <h2>📊 Сегодня</h2>
             </div>
             <div class="stats-grid">
                 <div class="stat-box">
-                    <span class="stat-num" id="total-meals">0</span>
-                    <span class="stat-text">приёмов пищи</span>
+                    <span class="stat-num" id="meals-count">0</span>
+                    <span class="stat-text">приёмов</span>
                 </div>
                 <div class="stat-box">
-                    <span class="stat-num" id="water-goal">0%</span>
-                    <span class="stat-text">воды от цели</span>
+                    <span class="stat-num" id="water-percent">0%</span>
+                    <span class="stat-text">воды</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-num" id="calories-est">~0</span>
+                    <span class="stat-text">ккал (оценка)</span>
                 </div>
             </div>
         </section>
 
         <footer class="footer">
-            <p>Всё хранится только у тебя в браузере 🔒</p>
+            <p>Всё хранится только в твоём браузере 🔒</p>
+            <p class="sad-note">Я буду рядом... даже если будет тяжело</p>
         </footer>
-    </div>
-
-    <!-- Modal for adding custom food -->
-    <div class="modal" id="food-modal">
-        <div class="modal-content">
-            <h3>Добавить еду</h3>
-            <input type="text" id="food-name" placeholder="Что съел?" maxlength="50">
-            <input type="text" id="food-time" placeholder="Время (необязательно)">
-            <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancel-food">Отмена</button>
-                <button class="btn btn-primary" id="save-food">Сохранить</button>
-            </div>
-        </div>
     </div>
 
     <script src="script.js"></script>

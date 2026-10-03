@@ -122,7 +122,7 @@ let state = {
     weights: [],
     date: new Date().toDateString(),
     chatHistory: [],
-    history: [], // предыдущие дни [{date, foods, water}]
+    history: [],
     apiKey: localStorage.getItem("geminiApiKey") || ""
 };
 
@@ -133,7 +133,6 @@ function loadState() {
         if (parsed.date === new Date().toDateString()) {
             state = { ...state, ...parsed };
         } else {
-            // Новый день — сохраняем вчера в историю
             if (parsed.foods && parsed.foods.length > 0 || parsed.water > 0) {
                 const hist = parsed.history || [];
                 hist.unshift({
@@ -141,7 +140,6 @@ function loadState() {
                     foods: parsed.foods || [],
                     water: parsed.water || 0
                 });
-                // Храним максимум 14 дней
                 state.history = hist.slice(0, 14);
             } else {
                 state.history = parsed.history || [];
@@ -295,7 +293,7 @@ async function sendToGemini(userText) {
         });
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${state.apiKey}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -510,7 +508,6 @@ function initApp() {
         });
     });
 
-    // Своя еда
     document.getElementById("add-custom-food").addEventListener("click", () => {
         const name = document.getElementById("custom-name").value.trim();
         const kcal = parseInt(document.getElementById("custom-kcal").value);

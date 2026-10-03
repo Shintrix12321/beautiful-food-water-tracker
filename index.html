@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food & Water Tracker ✨</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    
+    <div class="container">
+        <header class="header">
+            <h1 class="title">
+                <span class="emoji">🥗</span> Твой Трекер
+            </h1>
+            <p class="subtitle">Красиво отслеживай еду и воду • AI-ready</p>
+        </header>
+
+        <!-- Water Section -->
+        <section class="card water-card">
+            <div class="card-header">
+                <h2>💧 Вода сегодня</h2>
+                <span class="badge" id="water-count">0 / 8</span>
+            </div>
+            
+            <div class="water-visual">
+                <div class="glass-container">
+                    <div class="glass">
+                        <div class="water-fill" id="water-fill"></div>
+                        <div class="bubbles"></div>
+                    </div>
+                    <div class="glass-base"></div>
+                </div>
+                <div class="water-stats">
+                    <div class="stat">
+                        <span class="stat-value" id="glasses-drunk">0</span>
+                        <span class="stat-label">стаканов</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="ml-drunk">0</span>
+                        <span class="stat-label">мл</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="add-water">
+                    <span>+ Стакан</span>
+                </button>
+                <button class="btn btn-secondary" id="remove-water">−</button>
+            </div>
+        </section>
+
+        <!-- Food Section -->
+        <section class="card food-card">
+            <div class="card-header">
+                <h2>🍽️ Что съел</h2>
+                <button class="btn-icon" id="add-food-btn" title="Добавить">+</button>
+            </div>
+
+            <div class="quick-foods" id="quick-foods">
+                <!-- Quick add buttons will be here -->
+            </div>
+
+            <div class="food-list" id="food-list">
+                <!-- Food items appear here -->
+            </div>
+
+            <div class="empty-state" id="empty-food">
+                <p>Пока ничего не добавлено</p>
+                <span>Нажми + или выбери быстрый вариант</span>
+            </div>
+        </section>
+
+        <!-- AI Suggestions -->
+        <section class="card ai-card">
+            <div class="card-header">
+                <h2>🤖 AI-рекомендации</h2>
+                <span class="ai-badge">Google AI ready</span>
+            </div>
+            <div class="ai-content" id="ai-content">
+                <p class="ai-placeholder">На основе твоих записей Google AI сможет подсказывать:
+                • что добавить в рацион
+                • когда лучше выпить воды
+                • баланс БЖУ
+                </p>
+                <button class="btn btn-ai" id="get-ai-tip">Получить совет (демо)</button>
+            </div>
+        </section>
+
+        <!-- History / Stats -->
+        <section class="card stats-card">
+            <div class="card-header">
+                <h2>📊 Сегодня</h2>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-num" id="total-meals">0</span>
+                    <span class="stat-text">приёмов пищи</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-num" id="water-goal">0%</span>
+                    <span class="stat-text">воды от цели</span>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Всё хранится только у тебя в браузере 🔒</p>
+        </footer>
+    </div>
+
+    <!-- Modal for adding custom food -->
+    <div class="modal" id="food-modal">
+        <div class="modal-content">
+            <h3>Добавить еду</h3>
+            <input type="text" id="food-name" placeholder="Что съел?" maxlength="50">
+            <input type="text" id="food-time" placeholder="Время (необязательно)">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-food">Отмена</button>
+                <button class="btn btn-primary" id="save-food">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

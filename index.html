@@ -8,22 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Экран блокировки -->
     <div id="lock-screen" class="lock-screen">
         <div class="lock-content">
             <div class="lock-icon">🔒</div>
             <h2 class="lock-title">Введите пароль</h2>
             <p class="lock-subtitle">Трекер питания</p>
-            
             <div class="pin-dots" id="pin-dots">
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
                 <span class="dot"></span>
             </div>
-            
             <p class="lock-error" id="lock-error"></p>
-            
             <div class="pin-pad">
                 <button class="pin-btn" data-num="1">1</button>
                 <button class="pin-btn" data-num="2">2</button>
@@ -57,7 +53,6 @@
             </div>
         </header>
 
-        <!-- Gemini Chat -->
         <section class="card chat-card">
             <div class="card-header">
                 <h2>💬 Gemini</h2>
@@ -76,7 +71,12 @@
             </div>
 
             <div class="chat-input-row">
-                <label class="photo-btn" for="photo-input" title="Отправить фото">📷</label>
+                <label class="photo-btn" for="photo-input" title="Отправить фото">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </label>
                 <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none;">
                 <input type="text" id="chat-input" placeholder="Напиши или прикрепи фото..." autocomplete="off">
                 <button class="btn btn-primary" id="send-btn">➤</button>
@@ -84,13 +84,11 @@
             <p class="api-status" id="api-status">API-ключ не задан • нажми ⚙️</p>
         </section>
 
-        <!-- Water -->
         <section class="card water-card">
             <div class="card-header">
                 <h2>💧 Вода</h2>
                 <span class="badge" id="water-count">0 / 10</span>
             </div>
-            
             <div class="water-visual">
                 <div class="glass-container">
                     <div class="glass">
@@ -108,7 +106,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="actions">
                 <button class="btn btn-primary" id="add-water">+ Стакан (250 мл)</button>
                 <button class="btn btn-secondary" id="remove-water">−</button>
@@ -116,7 +113,6 @@
             <p class="hint">На переменах можно Nemoloko (овсяное без сахара)</p>
         </section>
 
-        <!-- Schedule -->
         <section class="card schedule-card">
             <div class="card-header">
                 <h2>📅 Расписание сегодня</h2>
@@ -124,21 +120,17 @@
             <div class="timeline" id="timeline"></div>
         </section>
 
-        <!-- Meals -->
         <section class="card food-card">
             <div class="card-header">
                 <h2>🍽️ Приёмы пищи</h2>
             </div>
-
             <div class="meal-tabs">
                 <button class="meal-tab active" data-meal="breakfast">Завтрак</button>
                 <button class="meal-tab" data-meal="lunch">Обед</button>
                 <button class="meal-tab" data-meal="snack">Перекус</button>
                 <button class="meal-tab" data-meal="dinner">Ужин</button>
             </div>
-
             <div class="meal-options" id="meal-options"></div>
-
             <div class="custom-food">
                 <h3>➕ Своя еда</h3>
                 <div class="custom-food-row">
@@ -147,7 +139,6 @@
                     <button class="btn btn-primary" id="add-custom-food">+</button>
                 </div>
             </div>
-
             <div class="eaten-today">
                 <h3>Съедено сегодня</h3>
                 <div class="food-list" id="food-list"></div>
@@ -158,7 +149,6 @@
             </div>
         </section>
 
-        <!-- История -->
         <section class="card history-card">
             <div class="card-header">
                 <h2>📜 История</h2>
@@ -168,7 +158,6 @@
             </div>
         </section>
 
-        <!-- Weight -->
         <section class="card weight-card">
             <div class="card-header">
                 <h2>⚖️ Вес</h2>
@@ -181,7 +170,6 @@
             <div class="weight-history" id="weight-history"></div>
         </section>
 
-        <!-- Stats -->
         <section class="card stats-card">
             <div class="card-header">
                 <h2>📊 Сегодня</h2>
@@ -207,7 +195,6 @@
         </footer>
     </div>
 
-    <!-- Settings Modal -->
     <div class="modal" id="settings-modal">
         <div class="modal-content">
             <h3>Настройки Gemini</h3>
